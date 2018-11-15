@@ -11,19 +11,27 @@ model basic
  *  ******************** GLOBAL STARTS HERE ***********************
  */
 global {
-	point sceneloc <- {50, 0};
-	int guest_num <- 20;
+	point exit_loc <- {50, 0};
+	point guest_loc <- {15, 90};
+	int guest_num <- 5;
+	int balance <- 5000;
+	int minCost <- 100;
+	int maxCost <- 1000;
 	
 	init{
 		
 		create guest number: guest_num; 
 		
-		create auction_scene number: 2 {
-			location <- sceneloc;
+		create exit number: 2 {
+			location <- exit_loc;
 		}
 		
 		create auctioneer number: 1 {
-			location <- sceneloc;
+			location <- exit_loc;
+		}
+		
+		create scene number: 1 {
+			location <- guest_loc;
 		}
 	}
 	
@@ -38,54 +46,99 @@ global {
 
 species guest skills:[moving, fipa] {
 	point target_point <- nil;
+	int preferredPrice <- rnd(minCost, maxCost);
+	int counter <- 100;
+	bool interested <- flip(0.5);
+
 	
-	reflex do_wander when: (target_point = nil) {
+	reflex do_wander when: (counter > 0) {
 		do wander;
+		counter <- counter - 1;
 	}
 	
-	reflex reply_message when: (!empty(requests)) {
-		message requestFromAuctioneer <- (requests at 0);
-		do agree with: (message: requestFromAuctioneer, contents:[name + ' I will']);
-		
-		//If statement here to disagree with the auctioneer.
-		
-		do failure with: (message: requestFromAuctioneer, contents: [name + ' I reject, sorry not sorry']);
+	reflex go_to_scene when: (counter = 0) {
+		do goto target: guest_loc;
 	}
+	
+	reflex read_inform when: (!empty(informs)) {
+		loop i over: informs {
+			write string(name + i.contents);
+		}
+	}
+	
+	reflex read_cfp_1 when :(!empty(cfps)) {
+		loop c over:cfps {
+			write string(c.contents);
+		}
+	}
+	
+	reflex propose when:(interested) {
+		
+	}
+	
+//	reflex reply_message when: (!empty(requests)) {
+//		message requestFromAuctioneer <- (requests at 0);
+//		if(preferredPrice > 500) {
+//			do agree with: (message: requestFromAuctioneer, contents:[name + ' I will']);
+//		}
+//		else {
+//			do failure with: (message: requestFromAuctioneer, contents: [name + ' I reject, sorry not sorry']);
+//		}
+//	}
 	
 	aspect base {
-		draw triangle(3) color: #darkred;
+		draw pyramid(3) at: {location.x, location.y, 0} color: #darkred ;
+		draw sphere(1) at: {location.x, location.y, 3} color: #darkred;
 	}
 }
 
 
-species auctioneer skills:[fipa]{
+species auctioneer skills:[fipa, moving]{
+
+	bool at_scene <- false;
 	
-	rgb color <- #red;
-	
-	reflex send_request when: (time = 1) {
-		guest g <- guest at 0;
-		write(name + " sends message");
-		do start_conversation (to :: [g], protocol :: 'fipa-request', performative :: 'request', contents :: ['go sleeping'] );
+	reflex auction_starting when: (time = 99) {
+		//write "Auction starts in 10 minutes";
 	}
 	
-	reflex read_agree_message when: !(empty(agrees)) {
-		loop a over: agrees {
-			write(" agrees message with content: " + string(a.contents));
+	reflex go_to_scene when:(time >= 109) {
+		do goto target: guest_loc + {18, -18};
+		if(location  = guest_loc + {18, -18}){
+			at_scene <- true;
 		}
 	}
 	
-	reflex read_failure_message when: !(empty(failures)) {
-		loop f over: failures {
-			write(" rejects message with content: " + (string(f.contents)));
+	reflex start_auction when: (at_scene) {
+		//write "Auction is starting now";
+	}
+	
+	reflex send_inform when: (at_scene) {
+		loop i from:0 to:guest_num-1 {
+			guest g <- guest at i;
+			//write(name + " sends inform message");
+			do start_conversation (to :: [g], protocol :: 'fipa-inform', performative :: 'inform', contents :: ['start of auction'] );
 		}
 	}
+
+	reflex send_cfp_1 when:(time > 260) {
+		loop i from: 0 to: guest_num - 1 {
+			guest g <- guest at i;
+			do start_conversation (to :: [g], protocol :: 'fipa-contract-net', performative :: 'cfp', contents :: ['Selling signed T-Shirt']);
+		}
+	}
+	
+	
+	
+	
+	
+
 	
 	aspect base {
-		draw sphere(3) color: color;
+		draw pyramid(3) color: #cyan;
 	}
 }
 
-species auction_scene {
+species exit {
 	
 	rgb color <- #green;
 	
@@ -93,6 +146,12 @@ species auction_scene {
 		draw circle(6) color: color;
 	}
 	
+}
+
+species scene {
+	aspect base {
+		draw square(18) color: #darkred;
+	}
 }
 
 /*
@@ -106,7 +165,8 @@ experiment main {
 		display map type: opengl {
 			species guest aspect: base;
 			species auctioneer aspect: base;
-			species auction_scene aspect: base;
+			species exit aspect: base;
+			species scene aspect: base;
 		}
 	}
 }
