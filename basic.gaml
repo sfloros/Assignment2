@@ -62,18 +62,18 @@ species guest skills:[moving, fipa] {
 	
 	reflex read_inform when: (!empty(informs)) {
 		loop i over: informs {
-			write string(name + i.contents);
+			write name + string(i.contents);
 		}
 	}
 	
 	reflex read_cfp_1 when :(!empty(cfps)) {
-		loop c over:cfps {
+		loop c over: cfps {
 			write string(c.contents);
 		}
 	}
 	
 	reflex propose when:(interested) {
-		
+		do start_conversation with: [ to :: [auctioneer],  protocol :: 'fipa-propose',  performative :: 'propose',  contents :: [120] ]; 
 	}
 	
 //	reflex reply_message when: (!empty(requests)) {
@@ -127,7 +127,11 @@ species auctioneer skills:[fipa, moving]{
 		}
 	}
 	
-	
+	reflex read_interested when:(!empty(proposes)) {
+		loop p over: proposes {
+			write p.contents;
+		}
+	}
 	
 	
 	
