@@ -1,10 +1,3 @@
-	reflex accept_proposes when: (!empty(proposes)) {
-		message proposeFromInit <- (proposes at 0);
-		string proposal <- string(proposeFromInit.contents[1]);
-		if( proposal = "Reconsider" ) {
-			do accept_proposal with: (message :: proposeFromInit, contents :: ['I accept', ]);
-		} 
-
 /**
 * Name: test
 * Author: George
